@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import json
 from datetime import datetime, timedelta, date
@@ -20,9 +21,6 @@ COUNTRY_CONFIG = {
     "KR": {"name": "South Korea", "flag": "🇰🇷"},
 }
 TARGET_COUNTRIES = set(COUNTRY_CONFIG.keys())
-IMPACT_COLOR = {"high": "#f87171", "medium": "#fbbf24", "low": "#94a3b8", None: "#94a3b8"}
-IMPACT_BG    = {"high": "#3f1515", "medium": "#3d2a08", "low": "#1e2130", None: "#1e2130"}
-IMPACT_LABEL = {"high": "HIGH", "medium": "MED", "low": "LOW", None: "—"}
 
 def get_4week_range():
     today  = date.today()
@@ -40,7 +38,6 @@ def fetch_economic_events(from_date, to_date, api_key):
         resp.raise_for_status()
         events = resp.json().get("economicCalendar", [])
     except Exception as e:
-        st.warning(f"Finnhub error: {e}")
         return []
     return [e for e in events if e.get("country","").upper() in TARGET_COUNTRIES]
 
@@ -58,218 +55,18 @@ def fmt_val(v, unit=""):
     except: return str(v)
 
 def main():
-    if "selected_event" not in st.session_state:
-        st.session_state.selected_event = None
-
-    try:
-        api_key = st.secrets["FINNHUB_API_KEY"]
-    except Exception:
-        api_key = ""
-
+    # ── Global styles (sidebar only) ─────────────────────────
     st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
-* { box-sizing: border-box; }
-
-.stApp { background: #111827; }
-
-[data-testid="stSidebar"] {
-    background: #0f172a !important;
-    border-right: 1px solid #1e293b;
-}
-[data-testid="stSidebar"] * { color: #94a3b8 !important; }
-[data-testid="stSidebar"] .stCheckbox label {
-    font-family: 'Inter', sans-serif !important;
-    font-size: 13px !important;
-    color: #cbd5e1 !important;
-}
-[data-testid="stSidebar"] [data-testid="stCheckbox"] label span {
-    color: #cbd5e1 !important;
-}
-
-.sb-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; font-weight: 600;
-    color: #334155 !important;
-    text-transform: uppercase; letter-spacing: .2em;
-    margin: 22px 0 10px; display: block;
-}
-
-/* ── Page header ── */
-.pg-header {
-    display: flex; align-items: baseline; gap: 16px;
-    margin-bottom: 8px; padding-bottom: 16px;
-    border-bottom: 1px solid #1e293b;
-}
-.pg-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 20px; font-weight: 600; color: #f1f5f9;
-    letter-spacing: -.02em;
-}
-.pg-range {
-    font-family: 'Inter', sans-serif;
-    font-size: 13px; color: #475569; font-weight: 400;
-}
-
-/* ── Legend ── */
-.legend {
-    display: flex; gap: 22px; margin-bottom: 16px; align-items: center;
-}
-.leg {
-    display: flex; align-items: center; gap: 7px;
-    font-family: 'Inter', sans-serif; font-size: 12px; color: #64748b;
-}
-.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
-
-/* ── DOW header ── */
-.dow-grid {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    gap: 4px; margin-bottom: 4px;
-}
-.dow-cell {
-    text-align: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; font-weight: 600; color: #334155;
-    letter-spacing: .14em; text-transform: uppercase; padding: 6px 0;
-}
-
-/* ── Calendar grid ── */
-.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
-
-/* ── Day cell ── */
-.day-cell {
-    background: #1e293b;
-    border: 1px solid #293548;
-    border-radius: 10px;
-    padding: 12px 12px 10px;
-    height: 220px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #334155 transparent;
-    transition: border-color .15s, background .15s;
-}
-.day-cell::-webkit-scrollbar { width: 3px; }
-.day-cell::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-.day-cell:hover { border-color: #3b5bdb; background: #1e2d45; }
-.day-cell.today {
-    border-color: #3b5bdb;
-    background: #1a2744;
-    box-shadow: inset 0 0 0 1px #3b5bdb33;
-}
-.day-cell.past { opacity: .5; }
-.day-cell.weekend { background: #192132; border-color: #22304a; }
-.day-cell.selected {
-    border-color: #6366f1 !important;
-    background: #1e2050 !important;
-    box-shadow: 0 0 0 2px #6366f133 !important;
-}
-
-/* ── Day number ── */
-.day-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px; font-weight: 600; color: #475569;
-    display: block; margin-bottom: 10px; line-height: 1;
-}
-.day-cell.today .day-num { color: #818cf8; }
-.day-month-tag {
-    font-size: 9px; color: #334155; margin-left: 5px;
-    text-transform: uppercase; letter-spacing: .08em;
-}
-
-/* ── Event row inside cell ── */
-.ev-row {
-    display: flex; align-items: center; gap: 6px;
-    padding: 4px 7px; margin-bottom: 3px;
-    border-radius: 5px; border-left: 2px solid #334155;
-    background: #263348;
-    cursor: pointer;
-    transition: background .1s;
-}
-.ev-row:hover { background: #2d3f5c; }
-.ev-row.high   { border-left-color: #f87171; background: #2d1a1a; }
-.ev-row.high:hover { background: #3a2020; }
-.ev-row.medium { border-left-color: #fbbf24; background: #2d2210; }
-.ev-row.medium:hover { background: #3a2c14; }
-
-.ev-flag { font-size: 12px; flex-shrink: 0; line-height: 1; }
-.ev-name {
-    font-family: 'Inter', sans-serif;
-    font-size: 11px; font-weight: 400; color: #94a3b8;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    flex: 1; min-width: 0;
-}
-.ev-row.high   .ev-name { color: #fca5a5; }
-.ev-row.medium .ev-name { color: #fcd34d; }
-
-/* ── Streamlit button invisible overlay ── */
-div[data-testid="stButton"] button {
-    all: unset !important;
-    display: block !important;
-    width: 100% !important;
-    cursor: pointer !important;
-}
-
-/* ── Detail panel ── */
-.detail-panel {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 24px 28px;
-    margin-top: 20px;
-}
-.detail-date-header {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px; color: #475569;
-    text-transform: uppercase; letter-spacing: .12em;
-    margin-bottom: 20px;
-}
-.detail-event {
-    display: flex; align-items: flex-start; gap: 14px;
-    padding: 14px 16px; margin-bottom: 8px;
-    border-radius: 8px; background: #263348;
-    border-left: 3px solid #334155;
-}
-.detail-event.high   { border-left-color: #f87171; background: #2a1a1a; }
-.detail-event.medium { border-left-color: #fbbf24; background: #2a2010; }
-.detail-flag { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
-.detail-info { flex: 1; }
-.detail-name {
-    font-family: 'Inter', sans-serif;
-    font-size: 14px; font-weight: 600; color: #e2e8f0;
-    margin-bottom: 3px;
-}
-.detail-meta {
-    font-family: 'Inter', sans-serif;
-    font-size: 11px; color: #64748b; margin-bottom: 12px;
-}
-.detail-stats { display: flex; gap: 28px; }
-.stat-block {}
-.stat-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; color: #475569;
-    text-transform: uppercase; letter-spacing: .12em; margin-bottom: 4px;
-}
-.stat-val {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 16px; color: #94a3b8;
-}
-.stat-val.has-data { color: #e2e8f0; }
-.stat-val.actual   { color: #4ade80; }
-.stat-val.na       { color: #334155; }
-.detail-badge {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; font-weight: 600;
-    border: 1px solid; border-radius: 4px;
-    padding: 3px 8px; letter-spacing: .1em;
-    flex-shrink: 0; align-self: flex-start;
-    margin-top: 2px;
-}
-
-/* ── Scrollbar on detail panel ── */
-.detail-panel { max-height: 70vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #334155 transparent; }
-</style>
-""", unsafe_allow_html=True)
+    <style>
+    .stApp { background: #ffffff; }
+    [data-testid="stSidebar"] { background: #f8f9fa !important; border-right: 1px solid #e9ecef; }
+    [data-testid="stSidebar"] * { color: #495057 !important; }
+    [data-testid="stSidebar"] .stCheckbox label { font-family: sans-serif !important; font-size: 13px !important; }
+    .sb-title { font-family: monospace; font-size: 9px; font-weight: 700; color: #adb5bd !important;
+        text-transform: uppercase; letter-spacing: .18em; margin: 20px 0 8px; display: block; }
+    div[data-testid="stMainBlockContainer"] { padding-top: 1rem; }
+    </style>
+    """, unsafe_allow_html=True)
 
     # ── Sidebar ──────────────────────────────────────────────
     with st.sidebar:
@@ -289,6 +86,12 @@ div[data-testid="stButton"] button {
         if show_low:    allowed_impacts.update({"low", None, ""})
 
     # ── Data ─────────────────────────────────────────────────
+    try:
+        api_key = st.secrets["FINNHUB_API_KEY"]
+    except Exception:
+        api_key = ""
+        st.warning("FINNHUB_API_KEY not found in secrets.", icon="🔑")
+
     today = date.today()
     start_monday, end_sunday = get_4week_range()
     week_grid = build_week_grid(start_monday)
@@ -303,152 +106,373 @@ div[data-testid="stButton"] button {
             and (e.get("impact") or "").lower() in allowed_impacts
         ]
         events_by_date = group_events_by_date(filtered)
-    else:
-        st.warning("FINNHUB_API_KEY not found in secrets.", icon="🔑")
 
-    # ── Header ───────────────────────────────────────────────
-    st.markdown(f"""
-    <div class="pg-header">
-        <span class="pg-title">ECONOMIC CALENDAR</span>
-        <span class="pg-range">{" · ".join(month_labels)}</span>
-    </div>
-    <div class="legend">
-        <span class="leg"><span class="leg-dot" style="background:#f87171"></span>High Impact</span>
-        <span class="leg"><span class="leg-dot" style="background:#fbbf24"></span>Medium Impact</span>
-        <span class="leg"><span class="leg-dot" style="background:#475569"></span>Low / None</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── DOW header ───────────────────────────────────────────
-    st.markdown(
-        '<div class="dow-grid">' +
-        "".join(f'<div class="dow-cell">{d}</div>' for d in ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]) +
-        '</div>',
-        unsafe_allow_html=True
-    )
-
-    # ── Calendar grid ────────────────────────────────────────
-    # Strategy: render the visual HTML cell, then a HIDDEN button per EVENT
-    # (not per day) using display:none trick — we collect button presses via session_state
-
+    # ── Serialise events to JSON for JS ──────────────────────
+    all_days = {}
     for week in week_grid:
-        cols = st.columns(7, gap="small")
+        for day in week:
+            dk = day.isoformat()
+            evs = events_by_date.get(dk, [])
+            all_days[dk] = [
+                {
+                    "event":    e.get("event",""),
+                    "country":  e.get("country","").upper(),
+                    "flag":     COUNTRY_CONFIG.get(e.get("country","").upper(),{}).get("flag","🌐"),
+                    "cname":    COUNTRY_CONFIG.get(e.get("country","").upper(),{}).get("name",""),
+                    "impact":   (e.get("impact") or "").lower(),
+                    "prev":     fmt_val(e.get("prev"), e.get("unit","")),
+                    "estimate": fmt_val(e.get("estimate"), e.get("unit","")),
+                    "actual":   fmt_val(e.get("actual"), e.get("unit","")),
+                    "time":     e.get("time",""),
+                    "unit":     e.get("unit",""),
+                    "is_past":  (e.get("time","") or "")[:10] < today.isoformat(),
+                }
+                for e in evs
+            ]
+
+    today_str = today.isoformat()
+    days_flat = []
+    for week in week_grid:
         for day_idx, day in enumerate(week):
-            day_key    = day.isoformat()
-            is_today   = day == today
-            is_past    = day < today
-            is_weekend = day_idx >= 5
-            day_events = events_by_date.get(day_key, [])
+            dk = day.isoformat()
+            days_flat.append({
+                "date":      dk,
+                "day":       day.day,
+                "month_abbr": day.strftime("%b") if day.day == 1 else "",
+                "is_today":  dk == today_str,
+                "is_past":   dk < today_str,
+                "is_weekend": day_idx >= 5,
+                "week_idx":  week_grid.index(week),
+            })
 
-            sel_ev = st.session_state.selected_event
-            is_selected = sel_ev is not None and (sel_ev.get("time","") or "")[:10] == day_key
+    range_label = " · ".join(month_labels)
 
-            css = "day-cell"
-            if is_today:    css += " today"
-            elif is_past:   css += " past"
-            if is_weekend:  css += " weekend"
-            if is_selected: css += " selected"
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: 'Inter', sans-serif; background: #fff; color: #212529; padding: 0 4px; }}
 
-            month_tag = f'<span class="day-month-tag">{day.strftime("%b")}</span>' if day.day == 1 else ""
+  /* Header */
+  .pg-header {{ display:flex; align-items:baseline; gap:14px; margin-bottom:6px; padding-bottom:14px; border-bottom:2px solid #f1f3f5; }}
+  .pg-title {{ font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:#212529; letter-spacing:-.02em; }}
+  .pg-range {{ font-size:12px; color:#adb5bd; }}
 
-            # ALL events visible — cell is scrollable
-            ev_rows = ""
-            for ev in day_events:
-                code   = ev.get("country","").upper()
-                flag   = COUNTRY_CONFIG.get(code,{}).get("flag","🌐")
-                impact = (ev.get("impact") or "").lower()
-                name   = ev.get("event","")
-                ev_rows += f'<div class="ev-row {impact}"><span class="ev-flag">{flag}</span><span class="ev-name">{name}</span></div>'
+  /* Legend */
+  .legend {{ display:flex; gap:20px; margin-bottom:14px; align-items:center; }}
+  .leg {{ display:flex; align-items:center; gap:6px; font-size:11px; color:#868e96; }}
+  .leg-dot {{ width:8px; height:8px; border-radius:50%; }}
 
-            cell_html = f'<div class="{css}"><span class="day-num">{day.day}{month_tag}</span>{ev_rows}</div>'
+  /* DOW */
+  .dow-grid {{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }}
+  .dow-cell {{ text-align:center; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
+               color:#adb5bd; letter-spacing:.14em; text-transform:uppercase; padding:5px 0; }}
 
-            with cols[day_idx]:
-                st.markdown(cell_html, unsafe_allow_html=True)
-                # One small visible button per event for interactivity
-                for i, ev in enumerate(day_events):
-                    code   = ev.get("country","").upper()
-                    flag   = COUNTRY_CONFIG.get(code,{}).get("flag","🌐")
-                    impact = (ev.get("impact") or "").lower()
-                    icon   = {"high":"🔴","medium":"🟡"}.get(impact,"⚪")
-                    name   = ev.get("event","")[:30]
-                    key    = f"btn_{day_key}_{code}_{i}"
-                    if st.button(f"{flag} {icon} {name}", key=key, use_container_width=True):
-                        if st.session_state.selected_event == ev:
-                            st.session_state.selected_event = None
-                        else:
-                            st.session_state.selected_event = ev
+  /* Calendar grid */
+  .cal-grid {{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }}
 
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+  /* Day cell */
+  .day-cell {{
+    background: #fff;
+    border: 1.5px solid #e9ecef;
+    border-radius: 10px;
+    padding: 10px 10px 8px;
+    height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #dee2e6 transparent;
+    cursor: default;
+    transition: border-color .15s;
+  }}
+  .day-cell::-webkit-scrollbar {{ width: 3px; }}
+  .day-cell::-webkit-scrollbar-thumb {{ background:#dee2e6; border-radius:2px; }}
+  .day-cell:hover {{ border-color: #4263eb; }}
+  .day-cell.today {{ border-color:#4263eb; background:#f0f4ff; }}
+  .day-cell.past {{ opacity:.45; }}
+  .day-cell.weekend {{ background:#f8f9fa; }}
 
-    # ── Event detail panel ───────────────────────────────────
-    if st.session_state.selected_event:
-        ev      = st.session_state.selected_event
-        code    = ev.get("country","").upper()
-        flag    = COUNTRY_CONFIG.get(code,{}).get("flag","🌐")
-        cname   = COUNTRY_CONFIG.get(code,{}).get("name", code)
-        ename   = ev.get("event","Unknown")
-        impact  = (ev.get("impact") or "").lower() or None
-        icolor  = IMPACT_COLOR.get(impact, IMPACT_COLOR[None])
-        ilabel  = IMPACT_LABEL.get(impact,"—")
-        unit    = ev.get("unit","")
-        raw_t   = ev.get("time","")
-        edate   = datetime.strptime(raw_t[:10],"%Y-%m-%d").date() if raw_t else None
-        is_past = edate is not None and edate < today
-        time_str= raw_t[11:16] + " UTC" if len(raw_t) > 10 else ""
+  /* Day number */
+  .day-num {{ font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700;
+              color:#ced4da; display:block; margin-bottom:8px; line-height:1; }}
+  .day-cell.today .day-num {{ color:#4263eb; }}
+  .month-tag {{ font-size:9px; color:#dee2e6; margin-left:4px; text-transform:uppercase; letter-spacing:.07em; }}
 
-        prev_v  = fmt_val(ev.get("prev"), unit)
-        est_v   = fmt_val(ev.get("estimate"), unit)
-        act_raw = ev.get("actual")
-        act_v   = fmt_val(act_raw, unit) if is_past else "N/A"
-        act_cls = "actual" if is_past and act_raw is not None and act_raw != "" else ("na" if not is_past else "")
+  /* Event row */
+  .ev-row {{
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 7px; margin-bottom: 3px;
+    border-radius: 5px; border-left: 2.5px solid #dee2e6;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: background .1s, border-color .1s;
+    user-select: none;
+  }}
+  .ev-row:hover {{ background: #e9ecef; }}
+  .ev-row.high   {{ border-left-color:#f03e3e; background:#fff5f5; }}
+  .ev-row.high:hover {{ background:#ffe3e3; }}
+  .ev-row.medium {{ border-left-color:#f59f00; background:#fffbeb; }}
+  .ev-row.medium:hover {{ background:#fff3bf; }}
+  .ev-row.selected {{ outline: 2px solid #4263eb; background:#edf2ff !important; }}
 
-        def val_cls(v):
-            return "has-data" if v not in ("N/A","") else "na"
+  .ev-flag {{ font-size:12px; flex-shrink:0; line-height:1; }}
+  .ev-name {{ font-size:11px; font-weight:400; color:#495057;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }}
+  .ev-row.high   .ev-name {{ color:#c92a2a; font-weight:500; }}
+  .ev-row.medium .ev-name {{ color:#e67700; font-weight:500; }}
 
-        st.markdown("---")
-        hcol, xcol = st.columns([12, 1])
-        with xcol:
-            if st.button("✕", key="close_ev"):
-                st.session_state.selected_event = None
-                st.rerun()
+  /* Detail panel */
+  .detail-panel {{
+    background: #fff;
+    border: 1.5px solid #e9ecef;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-top: 20px;
+    max-height: 500px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #dee2e6 transparent;
+  }}
+  .detail-panel::-webkit-scrollbar {{ width:3px; }}
+  .detail-panel::-webkit-scrollbar-thumb {{ background:#dee2e6; border-radius:2px; }}
 
-        st.markdown(f"""
-        <div class="detail-panel">
-            <div class="detail-date-header">
-                {edate.strftime("%A, %d %B %Y") if edate else ""}{" · " + time_str if time_str else ""}
-            </div>
-            <div class="detail-event {impact or ''}">
-                <div class="detail-flag">{flag}</div>
-                <div class="detail-info">
-                    <div class="detail-name">{ename}</div>
-                    <div class="detail-meta">{cname}</div>
-                    <div class="detail-stats">
-                        <div class="stat-block">
-                            <div class="stat-label">Previous</div>
-                            <div class="stat-val {val_cls(prev_v)}">{prev_v}</div>
-                        </div>
-                        <div class="stat-block">
-                            <div class="stat-label">Forecast</div>
-                            <div class="stat-val {val_cls(est_v)}">{est_v}</div>
-                        </div>
-                        <div class="stat-block">
-                            <div class="stat-label">Actual</div>
-                            <div class="stat-val {act_cls}">{act_v}</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="detail-badge" style="color:{icolor};border-color:{icolor};">{ilabel}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+  .detail-header {{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }}
+  .detail-date {{ font-family:'JetBrains Mono',monospace; font-size:11px; color:#adb5bd;
+                  text-transform:uppercase; letter-spacing:.12em; }}
+  .close-btn {{ background:none; border:1.5px solid #dee2e6; border-radius:6px; padding:4px 10px;
+                font-size:12px; color:#868e96; cursor:pointer; font-family:inherit; }}
+  .close-btn:hover {{ background:#f8f9fa; color:#212529; }}
 
-    st.markdown("""
-    <div style="margin-top:40px;padding-top:14px;border-top:1px solid #1e293b;
-                font-family:'JetBrains Mono',monospace;font-size:9px;color:#1e293b;
-                display:flex;justify-content:space-between;">
-        <span>DATA · FINNHUB FREE TIER · ASIAN ECONOMIES</span>
-        <span>CACHE · 15 MIN</span>
+  .ev-card {{
+    display:flex; align-items:flex-start; gap:14px;
+    padding:16px 18px; margin-bottom:8px;
+    border-radius:8px; background:#f8f9fa;
+    border-left:3px solid #dee2e6;
+    cursor:pointer; transition:background .1s;
+  }}
+  .ev-card:hover {{ background:#f1f3f5; }}
+  .ev-card.high   {{ border-left-color:#f03e3e; background:#fff5f5; }}
+  .ev-card.high:hover {{ background:#ffe3e3; }}
+  .ev-card.medium {{ border-left-color:#f59f00; background:#fffbeb; }}
+  .ev-card.medium:hover {{ background:#fff3bf; }}
+  .ev-card.selected {{ outline:2px solid #4263eb; }}
+
+  .card-flag {{ font-size:24px; flex-shrink:0; }}
+  .card-info {{ flex:1; }}
+  .card-name {{ font-size:14px; font-weight:600; color:#212529; margin-bottom:3px; }}
+  .card-meta {{ font-size:11px; color:#868e96; margin-bottom:12px; }}
+
+  .stats {{ display:flex; gap:32px; }}
+  .stat-label {{ font-family:'JetBrains Mono',monospace; font-size:9px; color:#adb5bd;
+                 text-transform:uppercase; letter-spacing:.12em; margin-bottom:4px; }}
+  .stat-val {{ font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:#495057; }}
+  .stat-val.na {{ color:#dee2e6; }}
+  .stat-val.actual {{ color:#2f9e44; }}
+
+  .card-badge {{ font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
+                 border:1.5px solid; border-radius:4px; padding:3px 8px; letter-spacing:.1em;
+                 flex-shrink:0; align-self:flex-start; }}
+  .badge-high   {{ color:#f03e3e; border-color:#f03e3e; }}
+  .badge-medium {{ color:#f59f00; border-color:#f59f00; }}
+  .badge-low    {{ color:#868e96; border-color:#dee2e6; }}
+
+  .no-events {{ font-size:12px; color:#ced4da; padding:8px 0; font-style:italic; }}
+</style>
+</head>
+<body>
+
+<div class="pg-header">
+  <span class="pg-title">ECONOMIC CALENDAR</span>
+  <span class="pg-range">{range_label}</span>
+</div>
+<div class="legend">
+  <span class="leg"><span class="leg-dot" style="background:#f03e3e"></span>High Impact</span>
+  <span class="leg"><span class="leg-dot" style="background:#f59f00"></span>Medium Impact</span>
+  <span class="leg"><span class="leg-dot" style="background:#ced4da"></span>Low / None</span>
+</div>
+
+<div class="dow-grid">
+  <div class="dow-cell">Mon</div><div class="dow-cell">Tue</div>
+  <div class="dow-cell">Wed</div><div class="dow-cell">Thu</div>
+  <div class="dow-cell">Fri</div><div class="dow-cell">Sat</div>
+  <div class="dow-cell">Sun</div>
+</div>
+
+<div id="cal-root"></div>
+<div id="detail-root"></div>
+
+<script>
+const DAYS   = {json.dumps(days_flat)};
+const EVENTS = {json.dumps(all_days)};
+
+let selectedKey = null;
+
+function impactClass(impact) {{
+  if (impact === 'high')   return 'high';
+  if (impact === 'medium') return 'medium';
+  return '';
+}}
+
+function badgeClass(impact) {{
+  if (impact === 'high')   return 'badge-high';
+  if (impact === 'medium') return 'badge-medium';
+  return 'badge-low';
+}}
+
+function badgeLabel(impact) {{
+  if (impact === 'high')   return 'HIGH';
+  if (impact === 'medium') return 'MED';
+  return 'LOW';
+}}
+
+function statValClass(val, is_actual, is_past) {{
+  if (is_actual) {{
+    if (!is_past) return 'na';
+    if (val === 'N/A') return 'na';
+    return 'actual';
+  }}
+  if (val === 'N/A') return 'na';
+  return '';
+}}
+
+function renderCalendar() {{
+  const root = document.getElementById('cal-root');
+  root.innerHTML = '';
+
+  // Group days by week
+  const weeks = {{}};
+  DAYS.forEach(d => {{
+    const w = d.week_idx;
+    if (!weeks[w]) weeks[w] = [];
+    weeks[w].push(d);
+  }});
+
+  Object.keys(weeks).sort().forEach(wi => {{
+    const grid = document.createElement('div');
+    grid.className = 'cal-grid';
+
+    weeks[wi].forEach(d => {{
+      const evs = EVENTS[d.date] || [];
+      let css = 'day-cell';
+      if (d.is_today)   css += ' today';
+      else if (d.is_past) css += ' past';
+      if (d.is_weekend) css += ' weekend';
+
+      const cell = document.createElement('div');
+      cell.className = css;
+
+      let html = `<span class="day-num">${{d.day}}${{d.month_abbr ? `<span class="month-tag">${{d.month_abbr}}</span>` : ''}}</span>`;
+
+      if (evs.length === 0) {{
+        // empty cell
+      }} else {{
+        evs.forEach((ev, i) => {{
+          const ic = impactClass(ev.impact);
+          html += `<div class="ev-row ${{ic}}" data-date="${{d.date}}" data-idx="${{i}}">
+            <span class="ev-flag">${{ev.flag}}</span>
+            <span class="ev-name">${{ev.event}}</span>
+          </div>`;
+        }});
+      }}
+
+      cell.innerHTML = html;
+      grid.appendChild(cell);
+    }});
+
+    root.appendChild(grid);
+    const spacer = document.createElement('div');
+    spacer.style.height = '4px';
+    root.appendChild(spacer);
+  }});
+
+  // Attach click listeners to all ev-rows
+  document.querySelectorAll('.ev-row').forEach(row => {{
+    row.addEventListener('click', e => {{
+      const dateKey = row.getAttribute('data-date');
+      const idx     = parseInt(row.getAttribute('data-idx'));
+      const ev      = EVENTS[dateKey][idx];
+      const key     = dateKey + '_' + idx;
+
+      // Deselect all
+      document.querySelectorAll('.ev-row.selected').forEach(r => r.classList.remove('selected'));
+
+      if (selectedKey === key) {{
+        selectedKey = null;
+        renderDetail(null, null);
+      }} else {{
+        selectedKey = key;
+        row.classList.add('selected');
+        renderDetail(dateKey, ev);
+      }}
+      e.stopPropagation();
+    }});
+  }});
+}}
+
+function renderDetail(dateKey, ev) {{
+  const root = document.getElementById('detail-root');
+  if (!ev) {{ root.innerHTML = ''; return; }}
+
+  const ic    = impactClass(ev.impact);
+  const bc    = badgeClass(ev.impact);
+  const bl    = badgeLabel(ev.impact);
+
+  // Format date label
+  const dt  = new Date(dateKey + 'T00:00:00');
+  const dLabel = dt.toLocaleDateString('en-GB', {{weekday:'long', day:'2-digit', month:'long', year:'numeric'}});
+  const tLabel = ev.time && ev.time.length > 10 ? ev.time.substring(11,16) + ' UTC' : '';
+
+  const prevClass   = ev.prev     === 'N/A' ? 'na' : '';
+  const estClass    = ev.estimate === 'N/A' ? 'na' : '';
+  const actClass    = !ev.is_past ? 'na' : (ev.actual === 'N/A' ? 'na' : 'actual');
+  const actDisplay  = ev.is_past ? ev.actual : 'N/A';
+
+  root.innerHTML = `
+  <div class="detail-panel">
+    <div class="detail-header">
+      <span class="detail-date">${{dLabel}}${{tLabel ? ' · ' + tLabel : ''}}</span>
+      <button class="close-btn" onclick="closeDetail()">✕ Close</button>
     </div>
-    """, unsafe_allow_html=True)
+    <div class="ev-card ${{ic}}">
+      <div class="card-flag">${{ev.flag}}</div>
+      <div class="card-info">
+        <div class="card-name">${{ev.event}}</div>
+        <div class="card-meta">${{ev.cname}}</div>
+        <div class="stats">
+          <div>
+            <div class="stat-label">Previous</div>
+            <div class="stat-val ${{prevClass}}">${{ev.prev}}</div>
+          </div>
+          <div>
+            <div class="stat-label">Forecast</div>
+            <div class="stat-val ${{estClass}}">${{ev.estimate}}</div>
+          </div>
+          <div>
+            <div class="stat-label">Actual</div>
+            <div class="stat-val ${{actClass}}">${{actDisplay}}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-badge ${{bc}}">${{bl}}</div>
+    </div>
+  </div>`;
+}}
+
+function closeDetail() {{
+  selectedKey = null;
+  document.querySelectorAll('.ev-row.selected').forEach(r => r.classList.remove('selected'));
+  document.getElementById('detail-root').innerHTML = '';
+}}
+
+renderCalendar();
+</script>
+</body>
+</html>
+"""
+
+    components.html(html, height=1200, scrolling=True)
 
 main()
