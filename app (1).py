@@ -183,7 +183,7 @@ def main():
                 pills += f'<div style="font-size:9px;color:#444460;padding:1px 5px;">+{len(day_events)-6} more</div>'
             with cols[day_idx]:
                 st.markdown(f'<div class="{" ".join(classes)}"><span class="day-num">{day.day}</span>{month_suffix}{pills}</div>', unsafe_allow_html=True)
-                for ev in day_events:
+                for i, ev in enumerate(day_events):
                     code   = ev.get("country","").upper()
                     flag   = COUNTRY_CONFIG.get(code,{}).get("flag","🌐")
                     impact = (ev.get("impact") or "").lower()
