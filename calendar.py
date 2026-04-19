@@ -416,8 +416,9 @@ def main():
     # ── Sidebar: API key + filters ──────────────────────────
     with st.sidebar:
         st.markdown('<div class="sidebar-section-title">Configuration</div>', unsafe_allow_html=True)
-        api_key = st.text_input(
+        api_key = st.sidebar.text_input(
             "Finnhub API Key",
+            value = st.secrets.get("FINNHUB_API_KEY", ""),
             type="password",
             placeholder="paste your free key here",
             help="Get a free key at https://finnhub.io — no credit card needed",
