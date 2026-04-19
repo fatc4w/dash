@@ -59,10 +59,10 @@ def main():
     st.markdown("""
     <style>
     .stApp { background: #ffffff; }
-    [data-testid="stSidebar"] { background: #f8f9fa !important; border-right: 1px solid #e9ecef; }
-    [data-testid="stSidebar"] * { color: #495057 !important; }
+    [data-testid="stSidebar"] { background: #f8f9fa !important; border-right: 1px solid #212529; }
+    [data-testid="stSidebar"] * { color: #212529 !important; }
     [data-testid="stSidebar"] .stCheckbox label { font-family: sans-serif !important; font-size: 13px !important; }
-    .sb-title { font-family: monospace; font-size: 9px; font-weight: 700; color: #adb5bd !important;
+    .sb-title { font-family: monospace; font-size: 9px; font-weight: 700; color: #495057 !important;
         text-transform: uppercase; letter-spacing: .18em; margin: 20px 0 8px; display: block; }
     div[data-testid="stMainBlockContainer"] { padding-top: 1rem; }
     </style>
@@ -155,22 +155,22 @@ def main():
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{ font-family: 'Inter', sans-serif; background: #fff; color: #212529; padding: 0 4px; }}
+  body {{ font-family: 'Inter', sans-serif; background: #fff; color: #000; padding: 0 4px; }}
 
   /* Header */
-  .pg-header {{ display:flex; align-items:baseline; gap:14px; margin-bottom:6px; padding-bottom:14px; border-bottom:2px solid #f1f3f5; }}
-  .pg-title {{ font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:#212529; letter-spacing:-.02em; }}
-  .pg-range {{ font-size:12px; color:#adb5bd; }}
+  .pg-header {{ display:flex; align-items:baseline; gap:14px; margin-bottom:6px; padding-bottom:14px; border-bottom:2px solid #000; }}
+  .pg-title {{ font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:#000; letter-spacing:-.02em; }}
+  .pg-range {{ font-size:12px; color:#666; }}
 
   /* Legend */
   .legend {{ display:flex; gap:20px; margin-bottom:14px; align-items:center; }}
-  .leg {{ display:flex; align-items:center; gap:6px; font-size:11px; color:#868e96; }}
+  .leg {{ display:flex; align-items:center; gap:6px; font-size:11px; color:#333; }}
   .leg-dot {{ width:8px; height:8px; border-radius:50%; }}
 
   /* DOW */
   .dow-grid {{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }}
   .dow-cell {{ text-align:center; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
-               color:#adb5bd; letter-spacing:.14em; text-transform:uppercase; padding:5px 0; }}
+               color:#000; letter-spacing:.14em; text-transform:uppercase; padding:5px 0; }}
 
   /* Calendar grid */
   .cal-grid {{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }}
@@ -178,40 +178,40 @@ def main():
   /* Day cell */
   .day-cell {{
     background: #fff;
-    border: 1.5px solid #e9ecef;
+    border: 1.5px solid #000;
     border-radius: 10px;
     padding: 10px 10px 8px;
     height: 200px;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: #dee2e6 transparent;
+    scrollbar-color: #000 transparent;
     cursor: default;
     transition: border-color .15s;
   }}
   .day-cell::-webkit-scrollbar {{ width: 3px; }}
-  .day-cell::-webkit-scrollbar-thumb {{ background:#dee2e6; border-radius:2px; }}
+  .day-cell::-webkit-scrollbar-thumb {{ background:#000; border-radius:2px; }}
   .day-cell:hover {{ border-color: #4263eb; }}
   .day-cell.today {{ border-color:#4263eb; background:#f0f4ff; }}
   .day-cell.past {{ opacity:.45; }}
-  .day-cell.weekend {{ background:#f8f9fa; }}
+  .day-cell.weekend {{ background:#fafafa; }}
 
   /* Day number */
   .day-num {{ font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700;
-              color:#ced4da; display:block; margin-bottom:8px; line-height:1; }}
+              color:#000; display:block; margin-bottom:8px; line-height:1; }}
   .day-cell.today .day-num {{ color:#4263eb; }}
-  .month-tag {{ font-size:9px; color:#dee2e6; margin-left:4px; text-transform:uppercase; letter-spacing:.07em; }}
+  .month-tag {{ font-size:9px; color:#000; margin-left:4px; text-transform:uppercase; letter-spacing:.07em; }}
 
   /* Event row */
   .ev-row {{
     display: flex; align-items: center; gap: 6px;
     padding: 4px 7px; margin-bottom: 3px;
-    border-radius: 5px; border-left: 2.5px solid #dee2e6;
-    background: #f8f9fa;
+    border-radius: 5px; border-left: 2.5px solid #000;
+    background: #f5f5f5;
     cursor: pointer;
     transition: background .1s, border-color .1s;
     user-select: none;
   }}
-  .ev-row:hover {{ background: #e9ecef; }}
+  .ev-row:hover {{ background: #e8e8e8; }}
   .ev-row.high   {{ border-left-color:#f03e3e; background:#fff5f5; }}
   .ev-row.high:hover {{ background:#ffe3e3; }}
   .ev-row.medium {{ border-left-color:#f59f00; background:#fffbeb; }}
@@ -219,7 +219,7 @@ def main():
   .ev-row.selected {{ outline: 2px solid #4263eb; background:#edf2ff !important; }}
 
   .ev-flag {{ font-size:12px; flex-shrink:0; line-height:1; }}
-  .ev-name {{ font-size:11px; font-weight:400; color:#495057;
+  .ev-name {{ font-size:11px; font-weight:400; color:#000;
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }}
   .ev-row.high   .ev-name {{ color:#c92a2a; font-weight:500; }}
   .ev-row.medium .ev-name {{ color:#e67700; font-weight:500; }}
@@ -227,33 +227,33 @@ def main():
   /* Detail panel */
   .detail-panel {{
     background: #fff;
-    border: 1.5px solid #e9ecef;
+    border: 1.5px solid #000;
     border-radius: 12px;
     padding: 24px 28px;
     margin-top: 20px;
     max-height: 500px;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: #dee2e6 transparent;
+    scrollbar-color: #000 transparent;
   }}
   .detail-panel::-webkit-scrollbar {{ width:3px; }}
-  .detail-panel::-webkit-scrollbar-thumb {{ background:#dee2e6; border-radius:2px; }}
+  .detail-panel::-webkit-scrollbar-thumb {{ background:#000; border-radius:2px; }}
 
   .detail-header {{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }}
-  .detail-date {{ font-family:'JetBrains Mono',monospace; font-size:11px; color:#adb5bd;
+  .detail-date {{ font-family:'JetBrains Mono',monospace; font-size:11px; color:#666;
                   text-transform:uppercase; letter-spacing:.12em; }}
-  .close-btn {{ background:none; border:1.5px solid #dee2e6; border-radius:6px; padding:4px 10px;
-                font-size:12px; color:#868e96; cursor:pointer; font-family:inherit; }}
-  .close-btn:hover {{ background:#f8f9fa; color:#212529; }}
+  .close-btn {{ background:none; border:1.5px solid #000; border-radius:6px; padding:4px 10px;
+                font-size:12px; color:#000; cursor:pointer; font-family:inherit; }}
+  .close-btn:hover {{ background:#f5f5f5; }}
 
   .ev-card {{
     display:flex; align-items:flex-start; gap:14px;
     padding:16px 18px; margin-bottom:8px;
-    border-radius:8px; background:#f8f9fa;
-    border-left:3px solid #dee2e6;
+    border-radius:8px; background:#f5f5f5;
+    border-left:3px solid #000;
     cursor:pointer; transition:background .1s;
   }}
-  .ev-card:hover {{ background:#f1f3f5; }}
+  .ev-card:hover {{ background:#e8e8e8; }}
   .ev-card.high   {{ border-left-color:#f03e3e; background:#fff5f5; }}
   .ev-card.high:hover {{ background:#ffe3e3; }}
   .ev-card.medium {{ border-left-color:#f59f00; background:#fffbeb; }}
@@ -262,14 +262,14 @@ def main():
 
   .card-flag {{ font-size:24px; flex-shrink:0; }}
   .card-info {{ flex:1; }}
-  .card-name {{ font-size:14px; font-weight:600; color:#212529; margin-bottom:3px; }}
-  .card-meta {{ font-size:11px; color:#868e96; margin-bottom:12px; }}
+  .card-name {{ font-size:14px; font-weight:600; color:#000; margin-bottom:3px; }}
+  .card-meta {{ font-size:11px; color:#666; margin-bottom:12px; }}
 
   .stats {{ display:flex; gap:32px; }}
-  .stat-label {{ font-family:'JetBrains Mono',monospace; font-size:9px; color:#adb5bd;
+  .stat-label {{ font-family:'JetBrains Mono',monospace; font-size:9px; color:#666;
                  text-transform:uppercase; letter-spacing:.12em; margin-bottom:4px; }}
-  .stat-val {{ font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:#495057; }}
-  .stat-val.na {{ color:#dee2e6; }}
+  .stat-val {{ font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:#000; }}
+  .stat-val.na {{ color:#ccc; }}
   .stat-val.actual {{ color:#2f9e44; }}
 
   .card-badge {{ font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
@@ -277,9 +277,9 @@ def main():
                  flex-shrink:0; align-self:flex-start; }}
   .badge-high   {{ color:#f03e3e; border-color:#f03e3e; }}
   .badge-medium {{ color:#f59f00; border-color:#f59f00; }}
-  .badge-low    {{ color:#868e96; border-color:#dee2e6; }}
+  .badge-low    {{ color:#000; border-color:#000; }}
 
-  .no-events {{ font-size:12px; color:#ced4da; padding:8px 0; font-style:italic; }}
+  .no-events {{ font-size:12px; color:#ccc; padding:8px 0; font-style:italic; }}
 </style>
 </head>
 <body>
@@ -291,7 +291,7 @@ def main():
 <div class="legend">
   <span class="leg"><span class="leg-dot" style="background:#f03e3e"></span>High Impact</span>
   <span class="leg"><span class="leg-dot" style="background:#f59f00"></span>Medium Impact</span>
-  <span class="leg"><span class="leg-dot" style="background:#ced4da"></span>Low / None</span>
+  <span class="leg"><span class="leg-dot" style="background:#aaa"></span>Low / None</span>
 </div>
 
 <div class="dow-grid">
@@ -328,21 +328,10 @@ function badgeLabel(impact) {{
   return 'LOW';
 }}
 
-function statValClass(val, is_actual, is_past) {{
-  if (is_actual) {{
-    if (!is_past) return 'na';
-    if (val === 'N/A') return 'na';
-    return 'actual';
-  }}
-  if (val === 'N/A') return 'na';
-  return '';
-}}
-
 function renderCalendar() {{
   const root = document.getElementById('cal-root');
   root.innerHTML = '';
 
-  // Group days by week
   const weeks = {{}};
   DAYS.forEach(d => {{
     const w = d.week_idx;
@@ -367,7 +356,7 @@ function renderCalendar() {{
       let html = `<span class="day-num">${{d.day}}${{d.month_abbr ? `<span class="month-tag">${{d.month_abbr}}</span>` : ''}}</span>`;
 
       if (evs.length === 0) {{
-        // empty cell
+        // empty
       }} else {{
         evs.forEach((ev, i) => {{
           const ic = impactClass(ev.impact);
@@ -388,7 +377,6 @@ function renderCalendar() {{
     root.appendChild(spacer);
   }});
 
-  // Attach click listeners to all ev-rows
   document.querySelectorAll('.ev-row').forEach(row => {{
     row.addEventListener('click', e => {{
       const dateKey = row.getAttribute('data-date');
@@ -396,7 +384,6 @@ function renderCalendar() {{
       const ev      = EVENTS[dateKey][idx];
       const key     = dateKey + '_' + idx;
 
-      // Deselect all
       document.querySelectorAll('.ev-row.selected').forEach(r => r.classList.remove('selected'));
 
       if (selectedKey === key) {{
@@ -420,7 +407,6 @@ function renderDetail(dateKey, ev) {{
   const bc    = badgeClass(ev.impact);
   const bl    = badgeLabel(ev.impact);
 
-  // Format date label
   const dt  = new Date(dateKey + 'T00:00:00');
   const dLabel = dt.toLocaleDateString('en-GB', {{weekday:'long', day:'2-digit', month:'long', year:'numeric'}});
   const tLabel = ev.time && ev.time.length > 10 ? ev.time.substring(11,16) + ' UTC' : '';
