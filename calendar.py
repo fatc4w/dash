@@ -188,6 +188,16 @@ def render_event_detail(event: dict, today: date) -> None:
 # ─────────────────────────────────────────────
 
 def main():
+    # ── Session state for selected event ────
+    if "selected_event" not in st.session_state:
+        st.session_state.selected_event = None
+
+    # ── API key from secrets (no sidebar input needed) ──
+    try:
+        api_key = st.secrets["FINNHUB_API_KEY"]
+    except (KeyError, FileNotFoundError):
+        api_key = ""
+
     # ── Styles ──────────────────────────────
     st.markdown("""
     <style>
@@ -377,6 +387,39 @@ def main():
         letter-spacing: 0.08em;
     }
 
+    /* ── Event buttons (replace default Streamlit button style) ── */
+    /* Target buttons inside the calendar column cells */
+    [data-testid="stColumns"] .stButton > button {
+        background: #13131f !important;
+        border: none !important;
+        border-left: 2px solid #333355 !important;
+        border-radius: 3px !important;
+        padding: 2px 6px !important;
+        margin-bottom: 2px !important;
+        font-family: 'IBM Plex Sans', sans-serif !important;
+        font-size: 9.5px !important;
+        color: #8888aa !important;
+        text-align: left !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+        min-height: 0 !important;
+        line-height: 1.4 !important;
+    }
+    [data-testid="stColumns"] .stButton > button:hover {
+        background: #1a1a2e !important;
+        color: #aaaacc !important;
+        border-left-color: #5555aa !important;
+    }
+    /* High impact buttons */
+    [data-testid="stColumns"] .stButton > button[data-impact="high"] {
+        border-left-color: #ef4444 !important;
+        color: #cc8888 !important;
+    }
+    /* Close button */
+    button[kind="secondary"]:has(+ *) { display: inline; }
+
     /* ── Streamlit overrides ──────── */
     .stMetric label {
         font-family: 'IBM Plex Mono', monospace !important;
@@ -413,17 +456,8 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Sidebar: API key + filters ──────────────────────────
+    # ── Sidebar: filters only ───────────────────────────────
     with st.sidebar:
-        st.markdown('<div class="sidebar-section-title">Configuration</div>', unsafe_allow_html=True)
-        api_key = st.sidebar.text_input(
-            "Finnhub API Key",
-            value = st.secrets.get("FINNHUB_API_KEY", ""),
-            type="password",
-            placeholder="paste your free key here",
-            help="Get a free key at https://finnhub.io — no credit card needed",
-        )
-
         st.markdown('<div class="sidebar-section-title">Countries</div>', unsafe_allow_html=True)
         selected_countries = {}
         for code, info in COUNTRY_CONFIG.items():
@@ -484,7 +518,7 @@ def main():
         ]
         events_by_date = group_events_by_date(filtered)
     else:
-        st.info("🔑 Enter your Finnhub API key in the sidebar to load economic events. Free keys are available at [finnhub.io](https://finnhub.io).", icon="💡")
+        st.warning("⚠️ FINNHUB_API_KEY not found in `.streamlit/secrets.toml`.", icon="🔑")
 
     # ── Day-of-week header ───────────────────────────────────
     st.markdown("""
@@ -500,23 +534,19 @@ def main():
     """, unsafe_allow_html=True)
 
     # ── Render 4 weeks ───────────────────────────────────────
-    # We use st.columns(7) per week for reliable layout.
-    # Event details open below each week's row in an expander-per-event pattern.
+    # Each week is one row of 7 st.columns.
+    # Events render as small HTML pills. Clicking a pill button sets
+    # st.session_state.selected_event; the detail panel renders once
+    # below the entire grid — no expanders inside columns.
 
     for week_idx, week in enumerate(week_grid):
         cols = st.columns(7, gap="small")
-
-        # Track which events were clicked this week
-        clicked_events_this_week: list[tuple[date, dict]] = []
 
         for day_idx, day in enumerate(week):
             day_key = day.isoformat()
             is_today   = (day == today)
             is_past    = (day < today)
             is_weekend = (day_idx >= 5)
-            is_other   = (day.month != today.month and
-                          (week_idx == 0 and day.month != start_monday.month or
-                           week_idx == 3 and day.month != end_sunday.month))
 
             day_events = events_by_date.get(day_key, [])
 
@@ -526,13 +556,13 @@ def main():
             elif is_past:  classes.append("past")
             if is_weekend: classes.append("weekend")
 
-            # Day number label — show month abbreviation on the 1st
+            # Day number — show month abbrev on the 1st of any month
             day_label = str(day.day)
             month_suffix = f'<span class="day-month-label">{day.strftime("%b")}</span>' if day.day == 1 else ""
 
-            # Build event pills HTML
+            # Build event pills HTML (display only, no interaction in HTML)
             pills_html = ""
-            for ev in day_events[:6]:  # cap visible pills per cell
+            for ev in day_events[:6]:
                 pills_html += render_event_pill(ev, today)
             if len(day_events) > 6:
                 pills_html += f'<div style="font-size:9px;color:#444460;padding:1px 5px;">+{len(day_events)-6} more</div>'
@@ -543,21 +573,40 @@ def main():
                 {pills_html}
             </div>
             """
+
             with cols[day_idx]:
                 st.markdown(cell_html, unsafe_allow_html=True)
 
-                # One expander per event for details
+                # One small button per event — Streamlit buttons work inside columns fine
                 for ev in day_events:
                     country_code = ev.get("country", "").upper()
                     flag = COUNTRY_CONFIG.get(country_code, {}).get("flag", "🌐")
-                    short_name = ev.get("event", "")[:28]
+                    short_name = ev.get("event", "")[:22]
                     impact = (ev.get("impact") or "").lower()
                     impact_icon = {"high": "🔴", "medium": "🟡"}.get(impact, "⚫")
-
-                    with st.expander(f"{flag} {impact_icon} {short_name}"):
-                        render_event_detail(ev, today)
+                    btn_label = f"{flag} {impact_icon} {short_name}"
+                    # Unique key: date + event name + country
+                    btn_key = f"ev_{day_key}_{ev.get('event','')[:20]}_{country_code}"
+                    if st.button(btn_label, key=btn_key, use_container_width=True):
+                        # Toggle: clicking the same event again closes the panel
+                        if st.session_state.selected_event == ev:
+                            st.session_state.selected_event = None
+                        else:
+                            st.session_state.selected_event = ev
 
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+
+    # ── Detail panel — rendered once below the grid ──────────
+    if st.session_state.selected_event:
+        ev = st.session_state.selected_event
+        st.markdown("---")
+        col_detail, col_close = st.columns([11, 1])
+        with col_close:
+            if st.button("✕", key="close_detail"):
+                st.session_state.selected_event = None
+                st.rerun()
+        with col_detail:
+            render_event_detail(ev, today)
 
     # ── Footer ───────────────────────────────────────────────
     st.markdown("""
